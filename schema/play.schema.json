@@ -1,0 +1,251 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motion-canvas.io/rugby-motion/play.schema.json",
+  "title": "Rugby Motion Play",
+  "description": "A declarative rugby union play for the Rugby Motion renderer. Coordinates are metres in canonical pitch space: x is across the field and y is along its length. With attacking_direction set to toward_top, smaller y values are further forward on screen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "duration",
+    "attacking_direction",
+    "field",
+    "viewport",
+    "teams",
+    "players",
+    "ball"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference",
+      "description": "Optional editor hint pointing to this JSON Schema file. It does not affect runtime rendering."
+    },
+    "schema_version": {
+      "const": 1,
+      "description": "The play-file schema version. The current supported version is 1."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "A human-readable identifier for this play. It is scoped to this play file; player IDs in another play may be reused."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The title shown in the visualization. Project typography settings control its font and size."
+    },
+    "subtitle": {
+      "type": "string",
+      "description": "Optional supporting text shown below the title. Project typography settings control its font and size."
+    },
+    "tags": {
+      "type": "array",
+      "description": "Optional library and filtering labels.",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "attacking_direction": {
+      "type": "string",
+      "enum": ["toward_top", "toward_bottom", "left_to_right", "right_to_left"],
+      "description": "The attacking direction in the canonical pitch coordinate system. The current portrait renderer uses toward_top; other values are reserved for future camera transforms."
+    },
+    "duration": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Total play length in seconds. Player keyframes, ball events, annotations, and title-card times must fall within this interval."
+    },
+    "field": {"$ref": "#/$defs/field"},
+    "viewport": {"$ref": "#/$defs/viewport"},
+    "teams": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Visual team definitions. Every player's team should refer to one of these IDs.",
+      "items": {"$ref": "#/$defs/team"}
+    },
+    "players": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "description": "The numbered player tokens in this play. Player IDs are local to this file.",
+      "items": {"$ref": "#/$defs/player"}
+    },
+    "ball": {"$ref": "#/$defs/ball"},
+    "annotations": {
+      "type": "array",
+      "description": "Optional on-screen annotations with an authored visibility interval.",
+      "items": {"$ref": "#/$defs/annotation"}
+    },
+    "title_card": {"$ref": "#/$defs/titleCard"}
+  },
+  "$defs": {
+    "finiteNumber": {
+      "type": "number",
+      "description": "A finite numeric value. JSON numbers must not be NaN or Infinity."
+    },
+    "nonNegativeNumber": {
+      "type": "number",
+      "minimum": 0
+    },
+    "pitchPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": {"$ref": "#/$defs/finiteNumber", "description": "Across-field coordinate in metres."},
+        "y": {"$ref": "#/$defs/finiteNumber", "description": "Lengthwise coordinate in metres."}
+      }
+    },
+    "relativeOffset": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "forward": {"$ref": "#/$defs/nonNegativeNumber", "description": "Metres toward the attacking direction."},
+        "behind": {"$ref": "#/$defs/nonNegativeNumber", "description": "Metres away from the attacking direction."},
+        "right": {"$ref": "#/$defs/nonNegativeNumber", "description": "Metres to the viewer's right."},
+        "left": {"$ref": "#/$defs/nonNegativeNumber", "description": "Metres to the viewer's left."}
+      }
+    },
+    "fieldMarking": {
+      "type": "string",
+      "enum": ["touchline", "try_line", "dead_ball_line", "halfway", "10m", "22m", "5m", "15m", "gain_line"],
+      "description": "A rugby union field marking requested by the play data. The current renderer intentionally uses a full green diagram surface rather than an exact touchline-bounded pitch, so gain_line is the primary rendered marking. Other standard marking names are retained in the schema for authoring intent and future rendering modes."
+    },
+    "ease": {
+      "type": "string",
+      "enum": ["linear", "ease_in_out"],
+      "description": "Timing curve for movement to this keyframe. If a relative keyframe omits ease, the referenced player's same-time ease may be inherited."
+    },
+    "playerKeyframe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t"],
+      "properties": {
+        "t": {"$ref": "#/$defs/nonNegativeNumber", "description": "Time in seconds from play start. Keyframes must be monotonically ordered for each player."},
+        "x": {"$ref": "#/$defs/finiteNumber", "description": "Absolute across-field coordinate in metres. Provide x and y together."},
+        "y": {"$ref": "#/$defs/finiteNumber", "description": "Absolute lengthwise coordinate in metres. Provide x and y together."},
+        "relative_to": {"type": "string", "minLength": 1, "description": "ID of another player in this same play whose position at time t is the reference."},
+        "from_previous": {"const": true, "description": "Resolve this later keyframe from this player's immediately previous resolved keyframe, then apply offset_m."},
+        "offset_m": {"$ref": "#/$defs/relativeOffset", "description": "Human-readable offset from relative_to or from_previous. Use forward/behind and left/right instead of manually matching coordinates."},
+        "ease": {"$ref": "#/$defs/ease"}
+      },
+      "oneOf": [
+        {"required": ["x", "y"], "not": {"anyOf": [{"required": ["relative_to"]}, {"required": ["from_previous"]}]}},
+        {"required": ["relative_to", "offset_m"], "not": {"anyOf": [{"required": ["x"]}, {"required": ["y"]}, {"required": ["from_previous"]}]}},
+        {"required": ["from_previous", "offset_m"], "not": {"anyOf": [{"required": ["x"]}, {"required": ["y"]}, {"required": ["relative_to"]}]}}
+      ],
+      "description": "A player's position at time t. The first keyframe must define an absolute or relative position. Later keyframes may use from_previous with offset_m to move independently from that player's previous resolved position, or may hold the previous position if a position is omitted in the implementation's supported shorthand."
+    },
+    "team": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "color"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "description": "Team ID used by players in this play."},
+        "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "Six-digit hexadecimal fill color."}
+      }
+    },
+    "player": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "number", "team", "keyframes"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1, "description": "Player ID local to this play."},
+        "number": {"type": "integer", "minimum": 0, "maximum": 99, "description": "Jersey number shown inside the token."},
+        "team": {"type": "string", "minLength": 1, "description": "ID of a team in this play's teams array."},
+        "keyframes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/playerKeyframe"}, "description": "Monotonically timed motion track. Positions are interpolated between keyframes and the final position is held."}
+      }
+    },
+    "passEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "from", "to", "t", "duration"],
+      "properties": {
+        "type": {"const": "pass", "description": "A pass to another player."},
+        "from": {"type": "string", "minLength": 1, "description": "ID of the current ball carrier at release."},
+        "to": {"type": "string", "minLength": 1, "description": "ID of the receiving player. Their position is sampled at arrival; do not author ball coordinates."},
+        "t": {"$ref": "#/$defs/nonNegativeNumber", "description": "Pass release time in seconds."},
+        "duration": {"type": "number", "exclusiveMinimum": 0, "description": "Flight time in seconds."},
+        "curve": {"type": "string", "enum": ["straight"], "description": "Pass flight shape. Straight is currently implemented; arc/lob are reserved by the broader spec."}
+      }
+    },
+    "kickEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "from", "t", "target", "duration"],
+      "properties": {
+        "type": {"const": "kick"},
+        "from": {"type": "string", "minLength": 1, "description": "ID of the current ball carrier at release."},
+        "t": {"$ref": "#/$defs/nonNegativeNumber"},
+        "target": {"$ref": "#/$defs/pitchPoint", "description": "Explicit pitch target. Unlike a pass receiver, this is intentionally a literal coordinate."},
+        "duration": {"type": "number", "exclusiveMinimum": 0},
+        "curve": {"type": "string", "enum": ["straight", "arc", "lob"]}
+      }
+    },
+    "ball": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["starts_with", "events"],
+      "properties": {
+        "starts_with": {"type": "string", "minLength": 1, "description": "Player ID holding the ball at t=0."},
+        "events": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/passEvent"}, {"$ref": "#/$defs/kickEvent"}]}, "description": "Chronological ball events. Passes must form a carrier chain: each event's from must be the previous carrier."}
+      }
+    },
+    "gainLineKeyframe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t"],
+      "properties": {
+        "t": {"$ref": "#/$defs/nonNegativeNumber", "description": "At this timestamp the gain line snaps to the ball's position. t=0 and t=duration are implicit defaults; add only intermediate updates."}
+      }
+    },
+    "field": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width_m", "length_m"],
+      "properties": {
+        "width_m": {"type": "number", "exclusiveMinimum": 0, "description": "Pitch width in metres."},
+        "length_m": {"type": "number", "exclusiveMinimum": 0, "description": "Pitch length in metres."},
+        "show_markings": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/fieldMarking"}, "description": "Names of standard rugby union markings to show. Omit a marking to keep the visualization simpler for a given play."},
+        "gain_line": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/gainLineKeyframe"}, "description": "Optional intermediate gain-line update times. The resolved line is always at the ball; start and end timestamps are implicit."}
+      }
+    },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "padding_m"],
+      "properties": {
+        "mode": {"type": "string", "enum": ["auto", "fixed", "scenes"], "description": "Auto centers on used play bounds; fixed uses center/size; scenes is reserved for camera cuts."},
+        "padding_m": {"type": "number", "minimum": 0, "description": "Padding around the used player/ball bounds in auto mode."},
+        "center": {"$ref": "#/$defs/pitchPoint", "description": "Center for fixed viewport mode."},
+        "size": {"$ref": "#/$defs/pitchPoint", "description": "Width/height in metres for fixed viewport mode; x is width and y is height."}
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "text", "t_start", "t_end"],
+      "properties": {
+        "type": {"const": "text"},
+        "text": {"type": "string"},
+        "t_start": {"$ref": "#/$defs/nonNegativeNumber"},
+        "t_end": {"$ref": "#/$defs/nonNegativeNumber"},
+        "anchor": {"type": "string", "enum": ["screen_top", "screen_bottom", "pitch"]},
+        "position": {"$ref": "#/$defs/pitchPoint"}
+      }
+    },
+    "titleCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["show", "t_start", "t_end"],
+      "properties": {
+        "show": {"type": "boolean"},
+        "t_start": {"$ref": "#/$defs/nonNegativeNumber"},
+        "t_end": {"$ref": "#/$defs/nonNegativeNumber"}
+      }
+    }
+  }
+}

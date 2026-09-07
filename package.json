@@ -1,0 +1,24 @@
+{
+  "name": "rugby-motion",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "vite",
+    "build": "tsc -b && vite build",
+    "test": "node --experimental-strip-types tests/play.test.ts",
+    "export": "node --experimental-strip-types scripts/export.mts"
+  },
+  "dependencies": {
+    "@motion-canvas/2d": "^3.17.2",
+    "@motion-canvas/core": "^3.17.2",
+    "@motion-canvas/ffmpeg": "^3.17.2",
+    "@motion-canvas/ui": "^3.17.2"
+  },
+  "devDependencies": {
+    "@motion-canvas/vite-plugin": "^3.17.2",
+    "playwright": "^1.63.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}

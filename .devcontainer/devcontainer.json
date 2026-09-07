@@ -1,0 +1,15 @@
+{
+  "name": "rugby-motion",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "forwardPorts": [9000],
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y ffmpeg && npm install && npx --yes playwright install --with-deps chromium",
+  "postAttachCommand": "echo 'Run: npm run serve  (editor at http://localhost:9000)'",
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
+}

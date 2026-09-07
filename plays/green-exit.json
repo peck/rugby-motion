@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "id": "two-man-pod-green-02",
+  "title": "Green Exit",
+  "subtitle": "9 passes to 10, then 10 passes to 2, 2 attacks beyond the gain line, 1 supports",
+  "duration": 5,
+  "attacking_direction": "toward_top",
+  "field": {
+    "width_m": 70,
+    "length_m": 100,
+    "show_markings": ["gain_line"]
+  },
+  "viewport": {
+    "mode": "auto",
+    "padding_m": 5
+  },
+  "teams": [
+    {"id": "attack", "color": "#e95d4f"}
+  ],
+  "players": [
+    {
+      "id": "p9",
+      "number": 9,
+      "team": "attack",
+      "keyframes": [
+        {"t": 0, "x": 20, "y": 50},
+        {"t": 3, "x": 20, "y": 50},
+        {"t": 5, "relative_to": "p12", "offset_m": {"behind": 4, "right": 0}}
+      ]
+    },
+    {
+      "id": "p10",
+      "number": 10,
+      "team": "attack",
+      "keyframes": [
+        {"t": 0, "relative_to": "p9", "offset_m": {"behind": 5, "right": 5}},
+        {"t": 2, "relative_to": "p9", "offset_m": {"behind": 2, "right": 5}},
+        {"t": 5, "relative_to": "p9", "offset_m": {"behind": 5, "right": 5}}
+      ]
+    },
+    {
+      "id": "p1",
+      "number": 1,
+      "team": "attack",
+      "keyframes": [
+        {"t": 0, "relative_to": "p2", "offset_m": {"behind": 3, "left": 2}},
+        {"t": 3, "relative_to": "p2", "offset_m": {"behind": 0, "left": 2}},
+        {"t": 5, "relative_to": "p12", "offset_m": {"behind": 2, "left": 1}}
+      ]
+    },
+    {
+      "id": "p2",
+      "number": 2,
+      "team": "attack",
+      "keyframes": [
+        {"t": 0, "relative_to": "p9", "offset_m": {"behind": 6, "right": 12}},
+        {"t": 3, "relative_to": "p9", "offset_m": {"forward": 7, "right": 12}},
+        {"t": 5, "relative_to": "p12", "offset_m": {"behind": 2, "right": 1}}
+      ]
+    },
+    {
+      "id": "p12",
+      "number": 12,
+      "team": "attack",
+      "keyframes": [
+        {"t": 0, "relative_to": "p1", "offset_m": {"behind": 5, "right": 0}},
+        {"t": 2, "from_previous": true, "offset_m": {"forward": 8, "right": 5}},
+        {"t": 4, "from_previous": true, "offset_m": {"forward": 19, "right": 10}}
+      ]
+    }
+  ],
+  "ball": {
+    "starts_with": "p9",
+    "events": [
+      {"type": "pass", "from": "p9", "to": "p10", "t": 0.1, "duration": 0.5, "curve": "straight"},
+      {"type": "pass", "from": "p10", "to": "p12", "t": 1, "duration": 0.5, "curve": "straight"}
+    ]
+  }
+}
