@@ -2,6 +2,18 @@
 
 Rugby play visualizations built with Motion Canvas. Plays are JSON files in `plays/` and are rendered as landscape animations on a full green diagram surface with numbered player tokens, a ball, title text, and a gain line.
 
+## Example Output
+
+**Green One Bump** ([plays/pods/green-one-bump.json](plays/pods/green-one-bump.json)):
+
+<video src="docs/media/green-one-bump.mp4" controls width="480"></video>
+
+**Wedge** ([plays/backs/wedge.json](plays/backs/wedge.json)):
+
+<video src="docs/media/wedge.mp4" controls width="480"></video>
+
+Regenerate these clips with `npm run export -- --play=pods/green-one-bump` and `npm run export -- --play=backs/wedge`, then copy the results from `out/` into `docs/media/`.
+
 ## Setup
 
 Install dependencies:
@@ -29,19 +41,20 @@ http://localhost:9000/
 Select a play by filename in the URL:
 
 ```text
-http://localhost:9000/?play=black-one
-http://localhost:9000/?play=black-two
-http://localhost:9000/?play=green-one
-http://localhost:9000/?play=green-two
+http://localhost:9000/?play=pods/black-two-tips
+http://localhost:9000/?play=pods/green-exit
+http://localhost:9000/?play=pods/green-one-bump
+http://localhost:9000/?play=backs/hands
+http://localhost:9000/?play=backs/wedge
 ```
 
-The `play` value is the JSON filename without `.json`. New JSON files in `plays/` are discovered by Vite; restart the dev server if a newly added file does not appear.
+The `play` value is the JSON path under `plays/` without `.json`. New JSON files in `plays/` are discovered by Vite; restart the dev server if a newly added file does not appear.
 
 Auto viewports include all player keyframes in the play. If the play would not fit at the configured maximum zoom, the renderer zooms out for that play so every player token remains visible. The rendered green area is the diagram surface rather than an exact touchline-bounded pitch.
 
 ## Authoring Plays
 
-Create or edit a JSON file in `plays/`. Player IDs are scoped to that play, so separate play files may reuse IDs such as `p1`, `p2`, and `p9`.
+Create or edit a JSON file in `plays/`. The play's library identity comes from its relative file path, so `plays/pods/black-two-tips.json` is identified as `pods/black-two-tips`; play files do not need (and should not include) a top-level `id` field. Player IDs are scoped to that play, so separate play files may reuse IDs such as `p1`, `p2`, and `p9`.
 
 Player positions can be absolute:
 
@@ -73,6 +86,16 @@ For `attacking_direction: "toward_top"`, `forward` moves visually up the screen.
 
 The supported play format is described in [SPEC.md](SPEC.md) and implemented by the types and loader in `src/play/`.
 
+### Current Limitations
+
+The schema accepts some fields the renderer does not yet display:
+
+- `subtitle` is accepted but never shown.
+- Of `field.show_markings`, only `gain_line` is actually drawn; other marking names are reserved for later.
+- `annotations` and `title_card` are accepted but never shown.
+- `attacking_direction` values other than the default have no distinct rendering behavior yet.
+- `kick` ball events and pass `curve` values other than `straight` are not implemented.
+
 ## Checks
 
 Run the motion regression tests:
@@ -95,19 +118,18 @@ Export every JSON play to a play-specific MP4:
 npm run export
 ```
 
-The batch exporter discovers every `plays/*.json` file and writes one matching MP4 per play in `out/`:
+The batch exporter discovers every `plays/**/*.json` file and writes one matching MP4 per play in `out/`, preserving folder structure:
 
 ```text
-plays/black-one.json  -> out/black-one.mp4
-plays/black-two.json  -> out/black-two.mp4
-plays/green-one.json  -> out/green-one.mp4
-plays/green-two.json  -> out/green-two.mp4
+plays/pods/black-two-tips.json -> out/pods/black-two-tips.mp4
+plays/pods/green-exit.json     -> out/pods/green-exit.mp4
+plays/backs/hands.json         -> out/backs/hands.mp4
 ```
 
 To export one play:
 
 ```bash
-npm run export -- --play=black-two
+npm run export -- --play=pods/black-two-tips
 ```
 
 To check discovery without rendering video:

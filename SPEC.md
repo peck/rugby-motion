@@ -44,6 +44,10 @@ that can preserve wider horizontal movement in a single view.
   authors still never write TypeScript, they only edit data files.
   Schema validation happens with a TS schema library (e.g. Zod) as the
   play file is loaded.
+- Play library identity is derived from the file path under `plays/`, not
+  from an authored JSON `id`. For example, `plays/pods/black-two-tips.json`
+  is selected as `?play=pods/black-two-tips` and exported to
+  `out/pods/black-two-tips.mp4`.
 - **Rendering model tradeoff (decision):** Motion Canvas renders via
   an HTML `<canvas>` (raster), not SVG DOM, so it cannot natively
   output an animated SVG file. Given the choice between (a) keeping
@@ -91,7 +95,6 @@ that can preserve wider horizontal movement in a single view.
 
 ```yaml
 schema_version: 1
-id: "midfield-scissors-01"
 title: "Midfield Scissors"
 subtitle: "Attacking phase off 9"
 tags: [attack, backs]

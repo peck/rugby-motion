@@ -65,7 +65,6 @@ export type ResolvedGainLineKeyframe = {
 
 export type Play = {
   schema_version: number;
-  id: string;
   title: string;
   subtitle?: string;
   duration: number;

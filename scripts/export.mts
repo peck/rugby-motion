@@ -1,6 +1,6 @@
 import {spawn, type ChildProcess} from 'node:child_process';
 import {existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync} from 'node:fs';
-import {join, resolve} from 'node:path';
+import {dirname, join, relative, resolve, sep} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {chromium} from 'playwright';
 
@@ -23,13 +23,22 @@ type PlayEntry = {
   play: ReturnType<typeof loadPlay>;
 };
 
+const findPlayFiles = (directory: string): string[] =>
+  readdirSync(directory, {withFileTypes: true}).flatMap(entry => {
+    const filePath = join(directory, entry.name);
+    if (entry.isDirectory()) return findPlayFiles(filePath);
+    return entry.isFile() && entry.name.endsWith('.json') ? [filePath] : [];
+  });
+
+const playPathFromFilePath = (filePath: string) =>
+  relative(playsDirectory, filePath).split(sep).join('/').replace(/\.json$/, '');
+
 const readPlayLibrary = (): PlayEntry[] =>
-  readdirSync(playsDirectory)
-    .filter(fileName => fileName.endsWith('.json'))
+  findPlayFiles(playsDirectory)
     .sort()
-    .map(fileName => ({
-      fileName: fileName.replace(/\.json$/, ''),
-      play: loadPlay(JSON.parse(readFileSync(join(playsDirectory, fileName), 'utf8')) as Play),
+    .map(filePath => ({
+      fileName: playPathFromFilePath(filePath),
+      play: loadPlay(JSON.parse(readFileSync(filePath, 'utf8')) as Play),
     }));
 
 const parseArgs = () => ({
@@ -135,7 +144,7 @@ const renderPlay = async (entry: PlayEntry, browser: Awaited<ReturnType<typeof c
   page.on('pageerror', error => console.error(`[browser] ${error.message}`));
   try {
     console.log(`[${entry.fileName}] Opening Motion Canvas page...`);
-    await page.goto(`http://127.0.0.1:${port}/?play=${entry.fileName}`, {waitUntil: 'domcontentloaded'});
+    await page.goto(`http://127.0.0.1:${port}/?play=${encodeURIComponent(entry.fileName)}`, {waitUntil: 'domcontentloaded'});
     const renderButton = page.getByRole('button', {name: 'Render', exact: true});
     console.log(`[${entry.fileName}] Waiting for Render button...`);
     await renderButton.waitFor({state: 'visible', timeout: 30000});
@@ -180,6 +189,7 @@ const main = async () => {
       console.log(`Rendering ${entry.fileName}...`);
       const actualDuration = await renderPlay(entry, browser);
       const outputPath = join(exportDirectory, `${entry.fileName}.mp4`);
+      mkdirSync(dirname(outputPath), {recursive: true});
       rmSync(outputPath, {force: true});
       renameSync(renderedVideoPath, outputPath);
       console.log(`Created ${outputPath} (${statSync(outputPath).size} bytes, ${actualDuration.toFixed(2)}s)`);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import rawPlay from '../plays/black-one.json' with {type: 'json'};
+import rawPlay from '../plays/pods/black-one.json' with {type: 'json'};
 import {loadPlay} from '../src/play/loadPlay.ts';
-import {ballPositionAt, pointAt} from '../src/play/motion.ts';
+import {ballPositionAt, gainLineYAt, pointAt} from '../src/play/motion.ts';
 import {getViewportBounds} from '../src/play/viewport.ts';
 
 const play = loadPlay(rawPlay);
@@ -116,7 +116,6 @@ assert.equal(
 
 const basePreviousPositionFixture = {
   schema_version: 1,
-  id: 'previous-position-test',
   title: 'Previous Position Test',
   duration: 3,
   field: {width_m: 70, length_m: 100},
@@ -190,7 +189,6 @@ assert.throws(
 
 const outOfFieldViewportPlay = loadPlay({
   schema_version: 1,
-  id: 'out-of-field-viewport-test',
   title: 'Out Of Field Viewport Test',
   duration: 1,
   field: {width_m: 70, length_m: 100},
@@ -220,9 +218,123 @@ assert.deepEqual(
   'fixed viewport should preserve authored bounds',
 );
 
+// loadPlay() validates several top-level fields only after players/teams
+// resolve successfully, so every error-case fixture below still needs a
+// valid players/teams/ball shape to reach the check under test.
+assert.throws(
+  () => loadPlay({...basePreviousPositionFixture, schema_version: 2}),
+  /Unsupported schema_version/,
+);
+
+assert.throws(
+  () => loadPlay({...basePreviousPositionFixture, ball: {events: []}}),
+  /Play must define ball\.starts_with/,
+);
+
+assert.throws(
+  () => loadPlay({...basePreviousPositionFixture, viewport: {mode: 'cinematic', padding_m: 1}}),
+  /Play must define viewport\.mode as auto or fixed/,
+);
+
+const tooManyPlayers = Array.from({length: 31}, (_, index) => ({
+  id: `p${index}`,
+  number: index,
+  team: 'attack',
+  keyframes: [{t: 0, x: index, y: 0}],
+}));
+assert.throws(
+  () => loadPlay({
+    schema_version: 1,
+    title: 'Too Many Players Test',
+    duration: 1,
+    field: {width_m: 70, length_m: 100},
+    viewport: {mode: 'auto', padding_m: 1},
+    teams: [{id: 'attack', color: '#e95d4f'}],
+    players: tooManyPlayers,
+    ball: {starts_with: 'p0', events: []},
+  }),
+  /A play cannot contain more than 30 players/,
+);
+
+// Ball events must chain from the actual current carrier, even though this
+// check never looks at whether from/to are real player ids (see the
+// unknown-player test below for that separate failure mode).
+assert.throws(
+  () => loadPlay({
+    ...basePreviousPositionFixture,
+    ball: {starts_with: 'p1', events: [{type: 'pass', from: 'p2', to: 'p1', t: 0, duration: 0.5}]},
+  }),
+  /does not match the current carrier/,
+);
+
+// A later keyframe with no x/y, relative_to, or from_previous holds the
+// previous resolved position, chaining through consecutive held keyframes.
+const holdPreviousPlay = loadPlay({
+  schema_version: 1,
+  title: 'Hold Previous Test',
+  duration: 4,
+  field: {width_m: 70, length_m: 100},
+  viewport: {mode: 'auto', padding_m: 1},
+  teams: [{id: 'attack', color: '#e95d4f'}],
+  players: [{
+    id: 'p1',
+    number: 1,
+    team: 'attack',
+    keyframes: [{t: 0, x: 10, y: 20}, {t: 2}, {t: 4}],
+  }],
+  ball: {starts_with: 'p1', events: []},
+});
+const holdPreviousPlayer = holdPreviousPlay.players[0];
+assert.deepEqual(pointAt(holdPreviousPlayer, 2), {x: 10, y: 20});
+assert.deepEqual(pointAt(holdPreviousPlayer, 4), {x: 10, y: 20});
+
+// A fixed viewport missing center/size has nothing to preserve, so it falls
+// back to the same auto-computed bounds as viewport.mode: "auto".
+const fixedNoSizePlay = loadPlay({
+  schema_version: 1,
+  title: 'Fixed Without Size Test',
+  duration: 1,
+  field: {width_m: 70, length_m: 100},
+  viewport: {mode: 'fixed', padding_m: 5},
+  teams: [{id: 'attack', color: '#e95d4f'}],
+  players: [{id: 'p1', number: 1, team: 'attack', keyframes: [{t: 0, x: 10, y: 20}]}],
+  ball: {starts_with: 'p1', events: []},
+});
+assert.deepEqual(
+  getViewportBounds(fixedNoSizePlay),
+  {left: 5, right: 15, top: 15, bottom: 25},
+);
+
+// A ball event's to/from are only resolved against real players lazily, so
+// an unknown id fails once the gain line samples the ball position, not
+// during the from/to carrier-chain check above.
+assert.throws(
+  () => loadPlay({
+    schema_version: 1,
+    title: 'Unknown Player Ball Test',
+    duration: 2,
+    field: {width_m: 70, length_m: 100},
+    viewport: {mode: 'auto', padding_m: 1},
+    teams: [{id: 'attack', color: '#e95d4f'}],
+    players: [{id: 'p1', number: 1, team: 'attack', keyframes: [{t: 0, x: 10, y: 20}]}],
+    ball: {starts_with: 'p1', events: [{type: 'pass', from: 'p1', to: 'p99', t: 0.5, duration: 0.5}]},
+  }),
+  /Unknown player p99/,
+);
+
+// The gain line snaps to the most recent keyframe at or before the sampled
+// time; it never interpolates between two gain-line keyframes.
+const fakeGainLinePlay = {field: {gainLine: [{t: 0, y: 10}, {t: 2, y: 20}, {t: 4, y: 30}]}};
+assert.equal(gainLineYAt(fakeGainLinePlay, 0), 10);
+assert.equal(gainLineYAt(fakeGainLinePlay, 1), 10);
+assert.equal(gainLineYAt(fakeGainLinePlay, 2), 20);
+assert.equal(gainLineYAt(fakeGainLinePlay, 3.9), 20);
+assert.equal(gainLineYAt(fakeGainLinePlay, 4), 30);
+assert.equal(gainLineYAt(fakeGainLinePlay, 100), 30);
+
 // Multiple sequential passes must chain: the ball follows each carrier in
 // turn rather than sticking with the first receiver forever.
-const greenPlay = loadPlay((await import('../plays/green-one.json', {with: {type: 'json'}})).default);
+const greenPlay = loadPlay((await import('../plays/pods/green-one.json', {with: {type: 'json'}})).default);
 const [firstPass, secondPass] = greenPlay.ball.events;
 const p9 = greenPlay.players.find(player => player.id === 'p9')!;
 const p10 = greenPlay.players.find(player => player.id === 'p10')!;

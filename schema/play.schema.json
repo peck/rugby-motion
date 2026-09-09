@@ -7,7 +7,6 @@
   "additionalProperties": false,
   "required": [
     "schema_version",
-    "id",
     "title",
     "duration",
     "attacking_direction",
@@ -26,11 +25,6 @@
     "schema_version": {
       "const": 1,
       "description": "The play-file schema version. The current supported version is 1."
-    },
-    "id": {
-      "type": "string",
-      "minLength": 1,
-      "description": "A human-readable identifier for this play. It is scoped to this play file; player IDs in another play may be reused."
     },
     "title": {
       "type": "string",

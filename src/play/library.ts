@@ -8,21 +8,23 @@ export type LibraryPlay = {
   play: ResolvedPlay;
 };
 
-const modules = import.meta.glob('../../plays/*.json', {
+const modules = import.meta.glob('../../plays/**/*.json', {
   eager: true,
 }) as Record<string, JsonModule>;
 
+const playPathFromModulePath = (path: string) =>
+  path.replace(/^\.\.\/\.\.\/plays\//, '').replace(/\.json$/, '');
+
 export const playLibrary: LibraryPlay[] = Object.entries(modules)
   .map(([path, module]) => ({
-    fileName: path.split('/').pop()!.replace(/\.json$/, ''),
+    fileName: playPathFromModulePath(path),
     play: loadPlay(module.default as Play),
   }))
   .sort((first, second) => first.play.title.localeCompare(second.play.title));
 
 if (playLibrary.length === 0) {
-  throw new Error('No play files found in plays/*.json');
+  throw new Error('No play files found in plays/**/*.json');
 }
 
-// Each play is a fully independent file; its own `id`/player ids are scoped
-// to that play only, not a cross-play namespace, so filenames (which the
-// filesystem already keeps unique) are the sole library-level identity.
+// Each play is a fully independent file; player ids are scoped to that play
+// only, and the relative path under plays/ is the library-level identity.
