@@ -6,13 +6,24 @@ Rugby play visualizations built with Motion Canvas. Plays are JSON files in `pla
 
 **Green One Bump** ([plays/pods/green-one-bump.json](plays/pods/green-one-bump.json)):
 
-<video src="docs/media/green-one-bump.mp4" controls width="480"></video>
+![Green One Bump](docs/media/green-one-bump.gif)
 
 **Wedge** ([plays/backs/wedge.json](plays/backs/wedge.json)):
 
-<video src="docs/media/wedge.mp4" controls width="480"></video>
+![Wedge](docs/media/wedge.gif)
 
-Regenerate these clips with `npm run export -- --play=pods/green-one-bump` and `npm run export -- --play=backs/wedge`, then copy the results from `out/` into `docs/media/`.
+GitHub does not reliably play inline `<video>` embeds sourced from repo files, so these are animated GIFs; the original MP4s are next to them in `docs/media/` for full quality. Regenerate both with:
+
+```bash
+npm run export -- --play=pods/green-one-bump
+npm run export -- --play=backs/wedge
+```
+
+then copy the results from `out/` into `docs/media/` and re-encode as GIFs, e.g.:
+
+```bash
+ffmpeg -y -i docs/media/green-one-bump.mp4 -vf "fps=12,scale=480:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" docs/media/green-one-bump.gif
+```
 
 ## Setup
 
