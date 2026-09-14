@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Allow the sample output to be checked into git
+!out/samples
+
+# Don't allow plays generally to be checked into get, but allow the sample subdir
+plays/
+!plays/samples

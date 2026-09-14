@@ -5,6 +5,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {chromium} from 'playwright';
 
 import {loadPlay} from '../src/play/loadPlay.ts';
+import {parsePlaySource} from '../src/play/parsePlaySource.ts';
 import type {Play} from '../src/play/types.ts';
 
 const root = resolve(import.meta.dirname, '..');
@@ -14,7 +15,6 @@ const renderedVideoPath = join(root, 'output', 'project.mp4');
 const exportDirectory = join(root, 'out');
 const port = 4173;
 const fps = 60;
-const tailSeconds = 1.5;
 const renderProgressInterval = 1000;
 const stableVideoWindow = 2000;
 
@@ -23,23 +23,28 @@ type PlayEntry = {
   play: ReturnType<typeof loadPlay>;
 };
 
+const playFileExtension = /\.ya?ml$/;
+
 const findPlayFiles = (directory: string): string[] =>
   readdirSync(directory, {withFileTypes: true}).flatMap(entry => {
     const filePath = join(directory, entry.name);
     if (entry.isDirectory()) return findPlayFiles(filePath);
-    return entry.isFile() && entry.name.endsWith('.json') ? [filePath] : [];
+    return entry.isFile() && playFileExtension.test(entry.name) ? [filePath] : [];
   });
 
 const playPathFromFilePath = (filePath: string) =>
-  relative(playsDirectory, filePath).split(sep).join('/').replace(/\.json$/, '');
+  relative(playsDirectory, filePath).split(sep).join('/').replace(playFileExtension, '');
 
 const readPlayLibrary = (): PlayEntry[] =>
   findPlayFiles(playsDirectory)
     .sort()
-    .map(filePath => ({
-      fileName: playPathFromFilePath(filePath),
-      play: loadPlay(JSON.parse(readFileSync(filePath, 'utf8')) as Play),
-    }));
+    .map(filePath => {
+      const fileName = playPathFromFilePath(filePath);
+      return {
+        fileName,
+        play: loadPlay(parsePlaySource(readFileSync(filePath, 'utf8'), fileName) as Play),
+      };
+    });
 
 const parseArgs = () => ({
   dryRun: process.argv.includes('--dry-run'),
@@ -90,7 +95,7 @@ const probeDuration = async (filePath: string): Promise<number> => {
 };
 
 const waitForRenderedVideo = async (entry: PlayEntry) => {
-  const expectedDuration = entry.play.duration + tailSeconds;
+  const expectedDuration = entry.play.duration + entry.play.endPadding;
   const deadline = Date.now() + 10 * 60 * 1000;
   let lastProgressAt = 0;
   let lastSize = -1;
@@ -136,7 +141,7 @@ const renderPlay = async (entry: PlayEntry, browser: Awaited<ReturnType<typeof c
   rmSync(renderedVideoPath, {force: true});
   mkdirSync(outputDirectory, {recursive: true});
 
-  const expectedFrames = Math.ceil((entry.play.duration + tailSeconds) * fps);
+  const expectedFrames = Math.ceil((entry.play.duration + entry.play.endPadding) * fps);
   const page = await browser.newPage();
   page.on('console', message => {
     if (message.type() === 'error') console.error(`[browser] ${message.text()}`);
@@ -165,7 +170,7 @@ const main = async () => {
   if (plays.length === 0) throw new Error(`No play found for --play=${requestedPlay}`);
 
   for (const entry of plays) {
-    const expectedFrames = Math.ceil((entry.play.duration + tailSeconds) * fps);
+    const expectedFrames = Math.ceil((entry.play.duration + entry.play.endPadding) * fps);
     console.log(`${entry.fileName}: ${entry.play.duration}s play, about ${expectedFrames} frames -> out/${entry.fileName}.mp4`);
   }
   if (dryRun) return;

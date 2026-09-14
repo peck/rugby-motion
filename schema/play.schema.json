@@ -8,7 +8,6 @@
   "required": [
     "schema_version",
     "title",
-    "duration",
     "attacking_direction",
     "field",
     "viewport",
@@ -49,7 +48,12 @@
     "duration": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Total play length in seconds. Player keyframes, ball events, annotations, and title-card times must fall within this interval."
+      "description": "Legacy authored total play length in seconds. Omit it to derive the length from the latest player keyframe, ball-event arrival, and authored gain-line time."
+    },
+    "end_padding": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Seconds to hold the final frame after the derived content end, before the play loops. Defaults to the shared endPadding in src/projectConfig.ts."
     },
     "field": {"$ref": "#/$defs/field"},
     "viewport": {"$ref": "#/$defs/viewport"},

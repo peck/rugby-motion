@@ -67,7 +67,9 @@ export type Play = {
   schema_version: number;
   title: string;
   subtitle?: string;
-  duration: number;
+  // Legacy authored total; omit it and the length is derived from the content.
+  duration?: number;
+  end_padding?: number;
   field: {
     width_m: number;
     length_m: number;
@@ -84,7 +86,9 @@ export type ResolvedPlayer = Player & {
   keyframes: Array<Keyframe & {x: number; y: number}>;
 };
 
-export type ResolvedPlay = Omit<Play, 'players' | 'field'> & {
+export type ResolvedPlay = Omit<Play, 'players' | 'field' | 'duration'> & {
+  duration: number;
+  endPadding: number;
   players: ResolvedPlayer[];
   field: Play['field'] & {gainLine: ResolvedGainLineKeyframe[]};
 };

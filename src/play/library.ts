@@ -1,29 +1,31 @@
 import {loadPlay} from './loadPlay';
+import {parsePlaySource} from './parsePlaySource.ts';
 import type {Play, ResolvedPlay} from './types';
-
-type JsonModule = {default: unknown};
 
 export type LibraryPlay = {
   fileName: string;
   play: ResolvedPlay;
 };
 
-const modules = import.meta.glob('../../plays/**/*.json', {
+// Imported raw so every play goes through the same parser the exporter uses.
+const modules = import.meta.glob('../../plays/**/*.{yaml,yml}', {
   eager: true,
-}) as Record<string, JsonModule>;
+  query: '?raw',
+  import: 'default',
+}) as Record<string, string>;
 
 const playPathFromModulePath = (path: string) =>
-  path.replace(/^\.\.\/\.\.\/plays\//, '').replace(/\.json$/, '');
+  path.replace(/^\.\.\/\.\.\/plays\//, '').replace(/\.ya?ml$/, '');
 
 export const playLibrary: LibraryPlay[] = Object.entries(modules)
-  .map(([path, module]) => ({
-    fileName: playPathFromModulePath(path),
-    play: loadPlay(module.default as Play),
+  .map(([modulePath, source]) => ({
+    fileName: playPathFromModulePath(modulePath),
+    play: loadPlay(parsePlaySource(source, playPathFromModulePath(modulePath)) as Play),
   }))
   .sort((first, second) => first.play.title.localeCompare(second.play.title));
 
 if (playLibrary.length === 0) {
-  throw new Error('No play files found in plays/**/*.json');
+  throw new Error('No play files found in plays/**/*.{yaml,yml}');
 }
 
 // Each play is a fully independent file; player ids are scoped to that play

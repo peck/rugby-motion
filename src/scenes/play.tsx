@@ -225,5 +225,5 @@ export default makeScene2D(function* (view) {
       ball().position(heldBallPosition(screen(ballPositionAt(play, play.duration))));
     })(),
   );
-  yield* waitFor(1.5);
+  yield* waitFor(play.endPadding);
 });

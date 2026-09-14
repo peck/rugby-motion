@@ -1,0 +1,107 @@
+schema_version: 1
+title: Three Pod, Second Option
+subtitle: 9 passes to 2; 1 clears through, 3 supports, and the ball returns to 9.
+duration: 6
+attacking_direction: toward_top
+field:
+  width_m: 70
+  length_m: 100
+  show_markings:
+    - gain_line
+viewport:
+  mode: auto
+  padding_m: 5
+teams:
+  - id: attack
+    color: "#e95d4f"
+players:
+  - id: p9
+    number: 9
+    team: attack
+    keyframes:
+      - t: 0
+        x: 35
+        y: 50
+      - t: 0.65
+        x: 35
+        y: 50
+      - t: 3
+        relative_to: p2
+        offset_m:
+          behind: 4
+          left: 2
+      - t: 4
+        relative_to: p2
+        offset_m:
+          behind: 2
+          left: 0
+  - id: p1
+    number: 1
+    team: attack
+    keyframes:
+      - t: 0
+        relative_to: p9
+        offset_m:
+          behind: 5
+          right: 7
+      - t: 3
+        relative_to: p2
+        offset_m:
+          behind: 1.5
+          right: 0.5
+      - t: 4
+        relative_to: p2
+        offset_m:
+          forward: 4
+          left: 0
+  - id: p2
+    number: 2
+    team: attack
+    keyframes:
+      - t: 0
+        relative_to: p1
+        offset_m:
+          behind: 1.5
+          left: 2.5
+      - t: 3
+        from_previous: true
+        offset_m:
+          forward: 11
+      - t: 4
+        from_previous: true
+        offset_m:
+          forward: 0
+  - id: p3
+    number: 3
+    team: attack
+    keyframes:
+      - t: 0
+        relative_to: p1
+        offset_m:
+          behind: 1.5
+          right: 2.5
+      - t: 3
+        relative_to: p2
+        offset_m:
+          behind: 1.5
+          right: 2.5
+      - t: 4
+        relative_to: p2
+        offset_m:
+          behind: 0.5
+          right: 0.5
+ball:
+  starts_with: p9
+  events:
+    - type: pass
+      from: p9
+      to: p2
+      t: 0.1
+      duration: 0.55
+      curve: straight
+    - type: pass
+      from: p2
+      to: p9
+      t: 4
+      duration: 0.55
+      curve: straight

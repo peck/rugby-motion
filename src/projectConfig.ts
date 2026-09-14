@@ -9,6 +9,8 @@ export const projectConfig = {
   // real-world distance always renders at the same size regardless of
   // which play is selected (see SPEC.md §6 "fixed zoom" decision).
   pitchScale: 40,
+  // Held after the derived content end so the last frame reads before looping.
+  endPadding: 1.5,
   // Reserved top strip (in pixels) the pitch render area never enters, so
   // the title text can never overlap the pitch.
   titleSafeHeight: 180,

@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
-import rawPlay from '../plays/pods/black-one.json' with {type: 'json'};
+import {readFileSync} from 'node:fs';
 import {loadPlay} from '../src/play/loadPlay.ts';
+import {parsePlaySource} from '../src/play/parsePlaySource.ts';
 import {ballPositionAt, gainLineYAt, pointAt} from '../src/play/motion.ts';
 import {getViewportBounds} from '../src/play/viewport.ts';
+import type {Play} from '../src/play/types.ts';
+
+const rawPlay = parsePlaySource(
+  readFileSync(new URL('../plays/pods/black-one.yaml', import.meta.url), 'utf8'),
+  'pods/black-one',
+) as Play;
 
 const play = loadPlay(rawPlay);
 const receiver = play.players.find(player => player.id === 'p1');
@@ -334,7 +341,10 @@ assert.equal(gainLineYAt(fakeGainLinePlay, 100), 30);
 
 // Multiple sequential passes must chain: the ball follows each carrier in
 // turn rather than sticking with the first receiver forever.
-const greenPlay = loadPlay((await import('../plays/pods/green-one.json', {with: {type: 'json'}})).default);
+const greenPlay = loadPlay(parsePlaySource(
+  readFileSync(new URL('../plays/pods/green-one.yaml', import.meta.url), 'utf8'),
+  'pods/green-one',
+) as Play);
 const [firstPass, secondPass] = greenPlay.ball.events;
 const p9 = greenPlay.players.find(player => player.id === 'p9')!;
 const p10 = greenPlay.players.find(player => player.id === 'p10')!;

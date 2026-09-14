@@ -1,5 +1,6 @@
 import {easeRatio} from './easing.ts';
 import {ballPositionAt} from './motion.ts';
+import {projectConfig} from '../projectConfig.ts';
 import type {
   GainLineKeyframe,
   Keyframe,
@@ -18,6 +19,21 @@ const number = (value: unknown, label: string): number => {
     throw new Error(`${label} must be a finite number`);
   }
   return value;
+};
+
+const hexColor = /^#[0-9a-fA-F]{6}$/;
+
+// A YAML "#rrggbb" left unquoted starts a comment and the value silently
+// parses as undefined/null, so this must reject that rather than let a team
+// render with a fallback color.
+const validateTeams = (teams: unknown[]): void => {
+  teams.forEach((team, index) => {
+    if (!isRecord(team) || typeof team.color !== 'string' || !hexColor.test(team.color)) {
+      throw new Error(
+        `teams[${index}].color must be a quoted six-digit hex color like "#e95d4f"`,
+      );
+    }
+  });
 };
 
 const resolveRelative = (reference: Point, offset: RelativeOffset): Point => ({
@@ -198,6 +214,16 @@ const buildWorkingPlayers = (rawPlayers: unknown[]): WorkingPlayer[] =>
     };
   });
 
+// Play length comes only from authored content; the synthetic terminal
+// gain-line keyframe is added later and must not feed back into it.
+const derivePlayEnd = (players: WorkingPlayer[], play: Play): number =>
+  Math.max(
+    0,
+    ...players.flatMap(player => player.keyframes.map(keyframe => keyframe.t)),
+    ...(play.ball.events ?? []).map(event => event.t + event.duration),
+    ...(play.field.gain_line ?? []).map(keyframe => keyframe.t),
+  );
+
 // The gain line is never an authored coordinate: it is always wherever the
 // ball is at a given time. It is implicitly present at the ball's starting
 // position (t=0) even if the author doesn't list that timestamp, and MAY
@@ -251,6 +277,7 @@ export const loadPlay = (value: unknown): ResolvedPlay => {
     throw new Error('Play must include teams and players arrays');
   }
   if (players.length > 30) throw new Error('A play cannot contain more than 30 players');
+  validateTeams(teams);
 
   const workingPlayers = buildWorkingPlayers(players);
   resolvePlayerPositions(workingPlayers);
@@ -263,12 +290,22 @@ export const loadPlay = (value: unknown): ResolvedPlay => {
   }
   validateBallEvents(play);
 
+  const duration = play.duration === undefined
+    ? derivePlayEnd(workingPlayers, play)
+    : number(play.duration, 'duration');
+  const endPadding = play.end_padding === undefined
+    ? projectConfig.endPadding
+    : number(play.end_padding, 'end_padding');
+  if (endPadding < 0) throw new Error('end_padding must not be negative');
+
   // Gain-line resolution may need the ball's resolved position (follow_ball),
   // so it runs against a fully-formed ResolvedPlay with a placeholder empty
   // gain line first (ballPositionAt never reads field.gainLine).
   const resolvedPlayers = workingPlayers as ResolvedPlay['players'];
   const playWithoutGainLine: ResolvedPlay = {
     ...play,
+    duration,
+    endPadding,
     players: resolvedPlayers,
     field: {...play.field, gainLine: []},
   };
@@ -276,6 +313,8 @@ export const loadPlay = (value: unknown): ResolvedPlay => {
 
   return {
     ...play,
+    duration,
+    endPadding,
     players: resolvedPlayers,
     field: {...play.field, gainLine},
   };
